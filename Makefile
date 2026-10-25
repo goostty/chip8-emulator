@@ -1,6 +1,6 @@
 CC      = cc
 UNAME_S := $(shell uname -s)
-TARGET  = my_game
+TARGET  = chip8
 SRC     = src/main.c
 
 # --- GLFW detection & install ---
@@ -33,7 +33,7 @@ ifeq ($(GLFW_OK),yes)
 else
 	@echo "GLFW not found. Installing..."
 ifeq ($(UNAME_S),Linux)
-	@sudo apt-get update && sudo apt-get install -y libglfw3-dev
+	@sudo dnf upgrade && sudo dnf install glfw glfw-devel
 endif
 ifeq ($(UNAME_S),Darwin)
 	@brew install glfw
@@ -44,4 +44,4 @@ endif
 clean:
 	rm -f $(TARGET) *.o
 
-.PHONY: all clean install-deps   
+.PHONY: all clean install-deps
