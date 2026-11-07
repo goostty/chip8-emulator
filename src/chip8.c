@@ -158,7 +158,13 @@ void op_groupC(Chip8 *chip, uint16_t opcode) {
 }
 
 // Continue Here
-void op_groupD(Chip8 *chip, uint16_t opcode) {}
+void op_groupD(Chip8 *chip, uint16_t opcode) {
+  chip->v[0xF] = 0;
+  uint8_t x = (opcode & 0x0F00) >> 8;
+  uint8_t y = (opcode & 0x00F0) >> 4;
+
+  chip->v[x] ^= chip->v[x];
+}
 
 void chip8_step(Chip8 *chip) {
   uint8_t h_byte = chip->memory[chip->pc];
