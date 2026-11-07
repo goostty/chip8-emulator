@@ -1,5 +1,10 @@
-#include "chip8.h"
+#ifdef __MACH__
+#include <OpenGL/gl.h>
+#elif defined(__linux__)
 #include <GL/gl.h>
+#endif
+
+#include "chip8.h"
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 
