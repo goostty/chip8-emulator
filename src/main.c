@@ -40,13 +40,17 @@ int main(int argc, char **argv) {
   }
 
   glfwMakeContextCurrent(window);
+  glfwSetKeyCallback(window, key_callback);
 
   while (!glfwWindowShouldClose(window)) {
+    chip8_step(chip);
+
     glClear(GL_COLOR_BUFFER_BIT);
+    glRasterPos2i(0, 0);
+    glDrawPixels(64, 32, GL_LUMINANCE, GL_UNSIGNED_BYTE, chip->display);
+
     glfwSwapBuffers(window);
     glfwPollEvents();
-
-    chip8_step(chip);
   }
 
   glfwDestroyWindow(window);

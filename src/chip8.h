@@ -1,4 +1,5 @@
 #include "stack.h"
+#include <GLFW/glfw3.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -6,21 +7,26 @@
 #include <string.h>
 #include <time.h>
 
+void key_callback(GLFWwindow *window, int key, int scancode, int action,
+                  int mods);
+
 typedef struct {
   uint8_t memory[4096];
-  bool display[64][32];
-  struct Stack stack;
+  uint8_t display[64][32];
+  struct Stack *stack;
   uint16_t pc;
   uint16_t I;
   uint8_t delay_timer;
   uint8_t sound_timer;
   uint8_t v[16];
+  uint8_t key[16];
 } Chip8;
 
 typedef void (*OpHandler)(Chip8 *chip, uint16_t opcode);
 
 int chip8_init(Chip8 *chip, FILE *f);
 void chip8_step(Chip8 *chip);
+void chip8_keys_update(Chip8 *chip, GLFWwindow *window);
 
 // Op Table Functions
 void op_group0(Chip8 *chip, uint16_t opcode);

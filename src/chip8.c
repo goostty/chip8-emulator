@@ -5,6 +5,7 @@ static const OpHandler table[16] = {op_group0, op_group1, op_group2, op_group3,
                                     op_group4, op_group5, op_group6, op_group7,
                                     op_group8, op_group9, op_groupA, op_groupB,
                                     op_groupC, op_groupD, op_groupE, op_groupF};
+int pressed_key = -1;
 
 int chip8_init(Chip8 *chip, FILE *f) {
   uint8_t buf[4096];
@@ -21,7 +22,7 @@ int chip8_init(Chip8 *chip, FILE *f) {
   chip->pc = 0x200;
   memcpy(chip->memory + 0x200, buf, len);
   chip->I = 0x200;
-  chip->stack.sp = 0;
+  chip->stack->sp = 0;
 
   fclose(f);
 
@@ -157,76 +158,114 @@ void op_groupC(Chip8 *chip, uint16_t opcode) {
   chip->v[x] = (rand_num & nn);
 }
 
-// Continue Here
 void op_groupD(Chip8 *chip, uint16_t opcode) {
   chip->v[0xF] = 0;
   uint8_t x = (opcode & 0x0F00) >> 8;
   uint8_t y = (opcode & 0x00F0) >> 4;
+  uint8_t height = opcode & 0x000F;
 
-  chip->v[x] ^= chip->v[x];
+  // Outer Loop: Rows (height), Inner Loop, pixels in each row
+  for (unsigned int row = 0; row < height; ++row) {
+    uint8_t spriteByte = chip->memory[chip->I + row];
+
+    for (unsigned int col = 0; col < 8; ++col) {
+      uint8_t spritePixel = spriteByte & (0x80 >> col);
+
+      if (spritePixel) {
+        if (*chip->display[(chip->v[y] + row) * 64 + (chip->v[x] + col)] == 1) {
+          chip->v[0xF] = 1;
+        }
+
+        // Flip pixel value
+        *(chip->display[(chip->v[y] + row) * 64 + (chip->v[x] + col)]) ^= 1;
+      }
+    }
+  }
+}
+
+void op_groupE(Chip8 *chip, uint16_t opcode) {
+  uint8_t x = (opcode >> 8) & 0x0F;
+  uint8_t sub = (opcode >> 4) & 0x0F;
+
+  if (sub == 0x9) {
+    if (chip->key[chip->v[x]])
+      chip->pc += 4;
+    else
+      chip->pc += 2;
+
+  } else if (sub == 0xA) {
+    if (!chip->key[chip->v[x]])
+      chip->pc += 4;
+    else
+      chip->pc += 2;
+
+  } else {
+    fprintf(stderr, "Not valid byte");
+  }
+}
+
+// Continue Here
+void op_groupF(Chip8 *chip, uint16_t opcode) {
+  uint8_t x = (opcode >> 8) & 0x0F;
+  uint8_t sub = opcode & 0xFF;
+
+  switch (sub) {
+  case 0x07:
+    chip->v[x] = chip->delay_timer;
+  case 0x0A:
+    while (pressed_key == -1) {
+      glfwWaitEvents();
+    }
+    chip->v[x] = pressed_key;
+  case 0x15:
+    chip->delay_timer = chip->v[x];
+  case 0x18:
+    chip->sound_timer = chip->v[x];
+  case 0x1E:
+    uint16_t old_I = chip->I;
+    chip->I += chip->v[x];
+    chip->v[0xF] = (chip->I < old_I) ? 1 : 0;
+  case 0x29:
+    chip->I = 0x050 + (chip->v[x] * 5);
+  case 0x33:
+    chip->memory[chip->I] = chip->v[x] / 100;
+    chip->memory[chip->I + 1] = (chip->v[x] / 10) % 10;
+    chip->memory[chip->I + 2] = chip->v[x] % 10;
+    // I is NOT incremented
+  case 0x55:
+    for (int i = 0; i <= x; ++i) {
+      chip->memory[chip->I + i] = chip->v[i];
+    }
+  case 0x66:
+    for (int i = 0; i <= x; ++i) {
+      chip->v[i] = chip->memory[chip->I + i];
+    }
+  }
+}
+
+void chip8_keys_update(Chip8 *chip, GLFWwindow *window) {
+  int glfw_keys[] = {GLFW_KEY_1, GLFW_KEY_2, GLFW_KEY_Q, GLFW_KEY_W,
+                     GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_Z, GLFW_KEY_X};
+  for (int byte = 0x1; byte <= 0xF; ++byte) {
+    chip->key[byte] = glfwGetKey(window, glfw_keys[byte]) == GLFW_PRESS;
+  }
+}
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action,
+                  int mods) {
+  if (action == GLFW_PRESS) {
+    pressed_key = key;
+  }
 }
 
 void chip8_step(Chip8 *chip) {
   uint8_t h_byte = chip->memory[chip->pc];
   uint8_t l_byte = chip->memory[chip->pc + 1];
-  uint8_t opcode = (h_byte << 8) | l_byte;
+  uint16_t opcode = (h_byte << 8) | l_byte;
 
   chip->pc += 2;
 
-  uint8_t nibble1 = (opcode >> 12) & 0xF;
-
-  switch (nibble1) {
-  case 0:
-    table[0](chip, opcode);
-    break;
-  case 1:
-    table[1](chip, opcode);
-    break;
-  case 2:
-    table[2](chip, opcode);
-    break;
-  case 3:
-    table[3](chip, opcode);
-    break;
-  case 4:
-    table[4](chip, opcode);
-    break;
-  case 5:
-    table[5](chip, opcode);
-    break;
-  case 6:
-    table[6](chip, opcode);
-    break;
-  case 7:
-    table[7](chip, opcode);
-    break;
-  case 8:
-    table[8](chip, opcode);
-    break;
-  case 9:
-    table[9](chip, opcode);
-    break;
-  case 0xA:
-    table[0xA](chip, opcode);
-    break;
-  case 0xB:
-    table[0xB](chip, opcode);
-    break;
-  case 0xC:
-    table[0xC](chip, opcode);
-    break;
-  case 0xD:
-    table[0xD](chip, opcode);
-    break;
-  case 0xE:
-    table[0xE](chip, opcode);
-    break;
-  case 0xF:
-    table[0xF](chip, opcode);
-    break;
-
-  default:
-    fprintf(stderr, "Not a valid opcode");
-    break;
-  }
+  uint8_t nibble1 =
+      opcode >> 12 & 0xF; // Bit shift takes more precedence than &
+  table[nibble1](chip, opcode);
 }

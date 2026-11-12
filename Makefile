@@ -1,7 +1,7 @@
 CC      = cc
 UNAME_S := $(shell uname -s)
 TARGET  = chip8
-SRC     = src/main.c
+SRC     = src/main.c src/chip8.c src/stack.c
 
 # --- GLFW detection & install ---
 GLFW_OK := $(shell pkg-config --exists glfw3 2>/dev/null && echo yes)
