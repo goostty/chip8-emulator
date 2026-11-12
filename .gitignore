@@ -1,1 +1,5 @@
-
+chip8
+tests/run_tests
+*.o
+my_game
+.DS_Store
